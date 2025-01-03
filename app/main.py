@@ -5,6 +5,8 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 import validators
+from fastapi.templating import Jinja2Templates
+from fastapi.staticfiles import StaticFiles
 
 from app.processors.readers import get_reader_for_url
 from app.processors.html_processor import process_html
@@ -23,6 +25,9 @@ app.add_middleware(
 
 # Rate limit error handler
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+templates = Jinja2Templates(directory="templates")
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 @app.get("/", response_class=PlainTextResponse)
 @limiter.limit("5/30seconds")
@@ -60,3 +65,7 @@ async def convert_html(
         return response
     except Exception as e:
         raise HTTPException(status_code=400, detail="Could not parse that document") 
+
+@app.get("/ui")
+async def web_interface(request: Request):
+    return templates.TemplateResponse("index.html", {"request": request}) 
