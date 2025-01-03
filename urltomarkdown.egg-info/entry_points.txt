@@ -1,0 +1,2 @@
+[console_scripts]
+url2md = app.cli:main
