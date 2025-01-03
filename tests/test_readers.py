@@ -1,5 +1,5 @@
 import pytest
-from app.processors.readers import get_reader_for_url
+from app import get_reader_for_url
 from app.processors.readers.html_reader import HTMLReader
 from app.processors.readers.apple_reader import AppleReader
 from app.processors.readers.stack_reader import StackOverflowReader
