@@ -1,187 +1,86 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>URL to Markdown Converter</title>
     <style>
         body {
-            font-family: Arial, sans-serif;
+            font-family: system-ui, -apple-system, sans-serif;
             max-width: 800px;
             margin: 0 auto;
             padding: 20px;
+            line-height: 1.6;
         }
         .form-group {
-            margin-bottom: 15px;
-        }
-        label {
-            display: block;
-            margin-bottom: 5px;
+            margin-bottom: 1rem;
         }
         input[type="text"] {
             width: 100%;
             padding: 8px;
-            margin-bottom: 10px;
-        }
-        .options {
-            margin-bottom: 20px;
-        }
-        .recursive-options {
-            margin-left: 20px;
-            display: none;
-        }
-        #result {
-            white-space: pre-wrap;
-            background: #f5f5f5;
-            padding: 15px;
-            margin-top: 20px;
+            margin: 4px 0;
         }
         button {
-            background: #007bff;
+            background: #0066cc;
             color: white;
             border: none;
             padding: 10px 20px;
+            border-radius: 4px;
             cursor: pointer;
         }
         button:hover {
-            background: #0056b3;
+            background: #0052a3;
         }
     </style>
 </head>
 <body>
     <h1>URL to Markdown Converter</h1>
-    
-    <div class="form-group">
-        <label>URL:</label>
-        <input type="text" id="url" placeholder="https://example.com">
-    </div>
-
-    <div class="options">
+    <form id="convertForm">
+        <div class="form-group">
+            <label for="url">URL:</label>
+            <input type="text" id="url" name="url" required 
+                   placeholder="https://docs.accelbooks.ai/">
+        </div>
         <div class="form-group">
             <label>
-                <input type="checkbox" id="title" checked>
+                <input type="checkbox" name="title" id="title">
                 Include title as heading
             </label>
         </div>
-        
         <div class="form-group">
             <label>
-                <input type="checkbox" id="links" checked>
+                <input type="checkbox" name="links" id="links" checked>
                 Preserve links
             </label>
         </div>
-
         <div class="form-group">
             <label>
-                <input type="checkbox" id="recursive" onchange="toggleRecursiveOptions()">
+                <input type="checkbox" name="recursive" id="recursive">
                 Process links recursively
             </label>
         </div>
-
-        <div class="recursive-options" id="recursiveOptions">
-            <div class="form-group">
-                <label>Recursion Depth:</label>
-                <select class="form-select" id="depth" name="depth">
-                    <option value="1">1 level</option>
-                    <option value="2">2 levels</option>
-                    <option value="3">3 levels</option>
-                    <option value="Unlimited">Unlimited</option>
-                </select>
-            </div>
-        </div>
-
-        <div class="form-group">
-            <label>Output Format:</label>
-            <select id="output">
-                <option value="preview">Preview in browser</option>
-                <option value="download">Download as ZIP</option>
-            </select>
-        </div>
-
-        <div class="form-check mb-3">
-            <input class="form-check-input" type="checkbox" id="useFern" name="use_fern">
-            <label class="form-check-label" for="useFern">
-                Use Fern-style components
-            </label>
-            <small class="form-text text-muted d-block">
-                Convert markdown to use Fern's component system (Cards, CodeBlocks, Steps, etc.)
-            </small>
-        </div>
-    </div>
-
-    <button onclick="convertUrl()">Convert to Markdown</button>
-    <div id="result"></div>
-    <div id="progress" style="white-space: pre-wrap; font-family: monospace; color: #666;"></div>
+        <button type="submit">Convert to Markdown</button>
+    </form>
+    <pre id="result" style="white-space: pre-wrap;"></pre>
 
     <script>
-        async function convertUrl() {
-            const url = document.getElementById('url').value;
-            const title = document.getElementById('title').checked;
-            const links = document.getElementById('links').checked;
-            const recursive = document.getElementById('recursive').checked;
-            const depth = document.getElementById('depth').value;
-            const useFern = document.getElementById('useFern').checked;
-            const output = document.getElementById('output').value;
-            const progress = document.getElementById('progress');
-            const result = document.getElementById('result');
-
-            progress.textContent = 'Starting conversion...\n';
-
+        document.getElementById('convertForm').onsubmit = async (e) => {
+            e.preventDefault();
+            const form = e.target;
+            const url = new URL('/convert', window.location.href);
+            url.searchParams.set('url', form.url.value);
+            url.searchParams.set('title', form.title.checked);
+            url.searchParams.set('links', form.links.checked);
+            url.searchParams.set('recursive', form.recursive.checked);
+            
             try {
-                const params = new URLSearchParams({
-                    url, title, links, recursive, depth, output, use_fern: useFern
-                }).toString();
-
-                const eventSource = new EventSource(`/convert/progress?${params}`);
-                let lastPing = Date.now();
-                const TIMEOUT = 30000; // 30 seconds
-
-                const checkConnection = setInterval(() => {
-                    if (Date.now() - lastPing > TIMEOUT) {
-                        eventSource.close();
-                        progress.textContent += 'Error: Connection timeout\n';
-                        clearInterval(checkConnection);
-                    }
-                }, 5000);
-
-                eventSource.onmessage = function(event) {
-                    lastPing = Date.now();
-                    if (event.data === 'ping') return;
-
-                    const data = JSON.parse(event.data);
-                    
-                    if (data.type === 'progress') {
-                        progress.textContent += `Processing: ${data.url}\n`;
-                    } else if (data.type === 'error') {
-                        progress.textContent += `Error: ${data.error}\n`;
-                    } else if (data.type === 'complete') {
-                        progress.textContent += `Successfully processed ${data.total_pages} pages.\n`;
-                        eventSource.close();
-                        clearInterval(checkConnection);
-
-                        if (data.download_ready) {
-                            window.location.href = `/convert/download?${params}`;
-                            result.textContent = 'Download complete!';
-                        } else {
-                            result.textContent = data.content;
-                        }
-                    }
-                };
-
-                eventSource.onerror = function(event) {
-                    clearInterval(checkConnection);
-                    eventSource.close();
-                    progress.textContent += 'Error: Connection lost\n';
-                };
-
+                const response = await fetch(url);
+                const result = await response.text();
+                document.getElementById('result').textContent = result;
             } catch (error) {
-                progress.textContent += `Error: ${error.message}\n`;
+                document.getElementById('result').textContent = `Error: ${error.message}`;
             }
-        }
-
-        function toggleRecursiveOptions() {
-            const recursiveOptions = document.getElementById('recursiveOptions');
-            recursiveOptions.style.display = 
-                document.getElementById('recursive').checked ? 'block' : 'none';
-        }
+        };
     </script>
 </body>
 </html> 

@@ -1,5 +1,5 @@
 from fastapi import FastAPI, HTTPException, Request, Response
-from fastapi.responses import PlainTextResponse, FileResponse
+from fastapi.responses import PlainTextResponse, FileResponse, HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
@@ -24,6 +24,7 @@ import asyncio
 from functools import lru_cache
 from starlette.background import BackgroundTask
 from contextlib import asynccontextmanager
+from fastapi.staticfiles import StaticFiles
 
 # Cache template loading
 @lru_cache()
@@ -36,9 +37,15 @@ config = Config(".env")
 # Create the FastAPI app
 app = FastAPI(
     title="URL to Markdown Converter",
-    docs_url=None,  # Disable docs for faster loading
-    redoc_url=None  # Disable redoc for faster loading
+    docs_url="/docs",  # Re-enable docs for debugging
+    redoc_url="/redoc"  # Re-enable redoc
 )
+
+# Mount static files
+app.mount("/static", StaticFiles(directory=os.path.join(os.path.dirname(__file__), "static")), name="static")
+
+# Get templates
+templates = Jinja2Templates(directory=os.path.join(os.path.dirname(__file__), "templates"))
 
 # Add CORS middleware
 app.add_middleware(
@@ -47,6 +54,11 @@ app.add_middleware(
     allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
+
+# Add root route to serve the web interface
+@app.get("/", response_class=HTMLResponse)
+async def root(request: Request):
+    return templates.TemplateResponse("index.html", {"request": request})
 
 @app.get("/convert")
 async def convert_url(
