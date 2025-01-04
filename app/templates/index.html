@@ -49,6 +49,19 @@
             white-space: pre-wrap;
             font-family: monospace;
         }
+        .output-options {
+            margin-top: 1rem;
+            padding: 1rem;
+            background: #f8f9fa;
+            border-radius: 4px;
+        }
+        select {
+            width: 100%;
+            padding: 8px;
+            margin: 4px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
     </style>
 </head>
 <body>
@@ -60,6 +73,8 @@
                 <input type="text" id="url" name="url" required 
                        placeholder="https://example.com">
             </div>
+            
+            <!-- Basic Options -->
             <div class="form-group">
                 <label>
                     <input type="checkbox" name="title" id="title">
@@ -72,34 +87,113 @@
                     Preserve links
                 </label>
             </div>
+
+            <!-- Recursive Options -->
             <div class="form-group">
                 <label>
                     <input type="checkbox" name="recursive" id="recursive">
                     Process links recursively
                 </label>
             </div>
+            <div class="form-group" id="depthOptions" style="display: none;">
+                <label for="depth">Recursion Depth:</label>
+                <select name="depth" id="depth">
+                    <option value="1">1 level</option>
+                    <option value="2">2 levels</option>
+                    <option value="3">3 levels</option>
+                    <option value="4">4 levels</option>
+                    <option value="5">5 levels</option>
+                    <option value="Unlimited">Unlimited</option>
+                </select>
+            </div>
+
+            <!-- Formatting Options -->
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" name="use_fern" id="use_fern">
+                    Use Fern style formatting
+                </label>
+            </div>
+
+            <!-- Output Options -->
+            <div class="form-group output-options">
+                <label for="output">Output format:</label>
+                <select name="output" id="output">
+                    <option value="preview">Preview in browser</option>
+                    <option value="download">Download as file</option>
+                    <option value="zip">Download as ZIP (for recursive)</option>
+                </select>
+            </div>
+
             <button type="submit">Convert to Markdown</button>
         </form>
         <pre id="result"></pre>
     </div>
 
     <script>
+        // Show/hide depth options based on recursive checkbox
+        document.getElementById('recursive').addEventListener('change', function() {
+            document.getElementById('depthOptions').style.display = 
+                this.checked ? 'block' : 'none';
+        });
+
         document.getElementById('convertForm').onsubmit = async (e) => {
             e.preventDefault();
             const form = e.target;
             const url = new URL('/convert', window.location.href);
+            
+            // Basic parameters
             url.searchParams.set('url', form.url.value);
             url.searchParams.set('title', form.title.checked);
             url.searchParams.set('links', form.links.checked);
             url.searchParams.set('recursive', form.recursive.checked);
+            url.searchParams.set('use_fern', form.use_fern.checked);
+            url.searchParams.set('output', form.output.value);
+            
+            // Add depth parameter if recursive
+            if (form.recursive.checked) {
+                url.searchParams.set('depth', form.depth.value);
+            }
             
             try {
                 const response = await fetch(url);
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
-                const result = await response.text();
-                document.getElementById('result').textContent = result;
+                
+                // Handle different response types
+                const contentType = response.headers.get('content-type');
+                if (contentType && contentType.includes('application/zip')) {
+                    // Handle ZIP download
+                    const blob = await response.blob();
+                    const downloadUrl = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = downloadUrl;
+                    a.download = 'markdown-export.zip';
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(downloadUrl);
+                    document.body.removeChild(a);
+                    document.getElementById('result').textContent = 'Download complete!';
+                } else {
+                    // Handle text preview or single file download
+                    const result = await response.text();
+                    if (form.output.value === 'preview') {
+                        document.getElementById('result').textContent = result;
+                    } else {
+                        // Handle single file download
+                        const blob = new Blob([result], { type: 'text/markdown' });
+                        const downloadUrl = window.URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = downloadUrl;
+                        a.download = 'converted.md';
+                        document.body.appendChild(a);
+                        a.click();
+                        window.URL.revokeObjectURL(downloadUrl);
+                        document.body.removeChild(a);
+                        document.getElementById('result').textContent = 'Download complete!';
+                    }
+                }
             } catch (error) {
                 document.getElementById('result').textContent = `Error: ${error.message}`;
             }

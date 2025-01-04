@@ -26,6 +26,7 @@ from starlette.background import BackgroundTask
 from contextlib import asynccontextmanager
 from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
+from app.processors.formatters.fern import convert_to_fern_style
 
 # Load environment variables
 load_dotenv()
@@ -83,6 +84,7 @@ async def convert_url(
         reader = get_reader_for_url(url)
         content, page_title = await reader.read_url(url, title, not links)
 
+        # Apply Fern styling if requested
         if use_fern:
             content = await convert_to_fern_style(content)
 
