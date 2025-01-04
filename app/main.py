@@ -119,7 +119,7 @@ async def convert_url(
     use_fern: bool = False,
     output: str = "preview"
 ):
-    logger.info(f"Converting URL: {url} (recursive: {recursive})")
+    logger.info(f"Converting URL: {url} (recursive: {recursive}, use_fern: {use_fern})")
     
     if not validators.url(url):
         raise HTTPException(status_code=400, detail="Invalid URL")
@@ -138,8 +138,25 @@ async def convert_url(
                     use_fern=use_fern
                 )
                 
-                # Create ZIP file from processed files
-                return create_zip_response(temp_dir)
+                # Create ZIP file
+                zip_buffer = io.BytesIO()
+                with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zipf:
+                    for root, _, files in os.walk(temp_dir):
+                        for file in files:
+                            file_path = os.path.join(root, file)
+                            # Get relative path for ZIP
+                            arc_name = os.path.relpath(file_path, temp_dir)
+                            zipf.write(file_path, arc_name)
+                
+                zip_buffer.seek(0)
+                return Response(
+                    content=zip_buffer.getvalue(),
+                    media_type='application/zip',
+                    headers={
+                        'Content-Disposition': 'attachment; filename=markdown-export.zip',
+                        'Content-Type': 'application/zip'
+                    }
+                )
         else:
             # Single file processing
             reader = get_reader_for_url(url)
@@ -152,12 +169,13 @@ async def convert_url(
             
     except Exception as e:
         logger.error(f"Error converting URL: {str(e)}")
+        logger.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=str(e))
 
 async def process_url_recursive(url: str, temp_dir: str, processed_urls: set, 
                               title: bool, links: bool, use_fern: bool, depth: int = 0):
     """Process a URL and its linked pages recursively"""
-    if depth > 5 or url in processed_urls:  # Limit recursion depth
+    if depth > 5 or url in processed_urls:
         return
     
     processed_urls.add(url)
@@ -176,29 +194,27 @@ async def process_url_recursive(url: str, temp_dir: str, processed_urls: set,
         path = parsed_url.path.strip("/")
         
         if not path:
-            filename = "index.md"
+            filename = "index.mdx"
         else:
-            # Replace slashes with hyphens and remove file extensions
-            filename = path.replace('/', '-').rstrip('.html').rstrip('.htm')
-            # Add .md extension if not present
-            if not filename.endswith('.md'):
-                filename += '.md'
+            # Replace slashes with hyphens and clean up the filename
+            filename = re.sub(r'[^\w\-]', '-', path.replace('/', '-'))
+            filename = re.sub(r'-+', '-', filename).strip('-')  # Clean up multiple hyphens
+            filename = f"{filename}.mdx"
         
-        # Save content
-        filepath = os.path.join(temp_dir, filename)
-        os.makedirs(os.path.dirname(filepath), exist_ok=True)
-        
-        with open(filepath, 'w', encoding='utf-8') as f:
+        # Write content to file
+        output_path = os.path.join(temp_dir, filename)
+        with open(output_path, 'w', encoding='utf-8') as f:
             f.write(f"---\ntitle: {page_title or 'Untitled'}\n")
             f.write(f"source: {url}\n")
             f.write(f"date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n---\n\n")
             f.write(content)
         
-        # Process linked pages
+        # Process linked pages if we haven't hit max depth
         if depth < 5:
             linked_urls = await get_page_links(url)
             for linked_url in linked_urls:
                 if linked_url not in processed_urls:
+                    await asyncio.sleep(1)  # Be nice to the server
                     await process_url_recursive(
                         url=linked_url,
                         temp_dir=temp_dir,
@@ -211,23 +227,32 @@ async def process_url_recursive(url: str, temp_dir: str, processed_urls: set,
     except Exception as e:
         logger.error(f"Error processing {url}: {str(e)}")
 
-def create_zip_response(temp_dir: str) -> Response:
-    """Create a ZIP file from the temporary directory"""
-    zip_buffer = io.BytesIO()
-    with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zipf:
-        for root, _, files in os.walk(temp_dir):
-            for file in files:
-                file_path = os.path.join(root, file)
-                arc_path = os.path.relpath(file_path, temp_dir)
-                zipf.write(file_path, arc_path)
-    
-    zip_buffer.seek(0)
-    return Response(
-        content=zip_buffer.getvalue(),
-        media_type='application/zip',
-        headers={'Content-Disposition': 'attachment; filename=markdown-export.zip'}
-    )
-
 @app.on_event("shutdown")
 async def shutdown_event():
     logger.info("Application shutting down...")
+
+async def get_page_links(url: str) -> set:
+    """Get all links from a page that match the base domain"""
+    try:
+        parsed_url = urlparse(url)
+        base_domain = parsed_url.netloc
+        
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url) as response:
+                html = await response.text()
+                soup = BeautifulSoup(html, 'html.parser')
+                links = set()
+                
+                for a in soup.find_all('a', href=True):
+                    href = a['href']
+                    full_url = urljoin(url, href)
+                    parsed = urlparse(full_url)
+                    
+                    # Only include links from same domain
+                    if parsed.netloc == base_domain and '#' not in href:
+                        links.add(full_url)
+                        
+                return links
+    except Exception as e:
+        logger.error(f"Error getting links from {url}: {str(e)}")
+        return set()
