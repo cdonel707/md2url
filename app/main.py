@@ -25,14 +25,21 @@ from functools import lru_cache
 from starlette.background import BackgroundTask
 from contextlib import asynccontextmanager
 from fastapi.staticfiles import StaticFiles
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
+
+# Get environment variables with defaults
+WORKERS = int(os.getenv('WORKERS', '4'))
+LOG_LEVEL = os.getenv('LOG_LEVEL', 'info')
+RELOAD = os.getenv('RELOAD', 'false').lower() == 'true'
+PORT = int(os.getenv('PORT', '8000'))
 
 # Cache template loading
 @lru_cache()
 def get_templates():
     return Jinja2Templates(directory=os.path.join(os.path.dirname(__file__), "templates"))
-
-# Load environment variables from .env file
-config = Config(".env")
 
 # Create the FastAPI app
 app = FastAPI(
