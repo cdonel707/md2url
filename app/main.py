@@ -27,6 +27,7 @@ from contextlib import asynccontextmanager
 from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
 from app.processors.formatters.fern import convert_to_fern_style
+import logging
 
 # Load environment variables
 load_dotenv()
@@ -171,3 +172,18 @@ def create_zip_response(temp_dir: str) -> Response:
         media_type='application/zip',
         headers={'Content-Disposition': 'attachment; filename=markdown-export.zip'}
     )
+
+@app.get("/")
+async def root():
+    return {"status": "healthy"}
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+@app.on_event("startup")
+async def startup_event():
+    logger.info("Application starting up...")
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    logger.info("Application shutting down...")
