@@ -46,11 +46,11 @@ def get_templates():
 # Create the FastAPI app
 app = FastAPI(
     title="URL to Markdown Converter",
-    docs_url="/docs",  # Re-enable docs for debugging
-    redoc_url="/redoc"  # Re-enable redoc
+    docs_url="/docs",
+    redoc_url="/redoc"
 )
 
-# Get templates
+# Configure templates
 templates = Jinja2Templates(directory=os.path.join(os.path.dirname(__file__), "templates"))
 
 # Add CORS middleware
@@ -61,10 +61,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Update the index.html template to not rely on static files
+# Serve the index page
 @app.get("/", response_class=HTMLResponse)
-async def root(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
+async def read_root(request: Request):
+    return templates.TemplateResponse(
+        "index.html",
+        {"request": request}
+    )
 
 @app.get("/convert")
 async def convert_url(
