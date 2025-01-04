@@ -42,13 +42,10 @@ PORT = int(os.getenv('PORT', '8000'))
 
 # Configure logging
 logging.basicConfig(
-    level=os.getenv('LOG_LEVEL', 'INFO'),
+    level=logging.DEBUG,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
-
-# Set readability logger to WARNING to suppress debug messages
-logging.getLogger('readability.readability').setLevel(logging.WARNING)
 
 # Create the FastAPI app
 app = FastAPI(
