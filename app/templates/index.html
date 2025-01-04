@@ -70,17 +70,18 @@
         <form id="convertForm">
             <div class="form-group">
                 <label for="url">URL:</label>
-                <input type="text" id="url" name="url" required 
-                       placeholder="https://example.com">
+                <input type="text" id="url" name="url" required>
             </div>
-            
-            <!-- Basic Options -->
+
+            <!-- Title Option -->
             <div class="form-group">
                 <label>
-                    <input type="checkbox" name="title" id="title">
+                    <input type="checkbox" name="title" id="title" checked>
                     Include title as heading
                 </label>
             </div>
+
+            <!-- Links Option -->
             <div class="form-group">
                 <label>
                     <input type="checkbox" name="links" id="links" checked>
@@ -88,26 +89,15 @@
                 </label>
             </div>
 
-            <!-- Recursive Options -->
+            <!-- Recursive Option -->
             <div class="form-group">
                 <label>
                     <input type="checkbox" name="recursive" id="recursive">
                     Process links recursively
                 </label>
             </div>
-            <div class="form-group" id="depthOptions" style="display: none;">
-                <label for="depth">Recursion Depth:</label>
-                <select name="depth" id="depth">
-                    <option value="1">1 level</option>
-                    <option value="2">2 levels</option>
-                    <option value="3">3 levels</option>
-                    <option value="4">4 levels</option>
-                    <option value="5">5 levels</option>
-                    <option value="Unlimited">Unlimited</option>
-                </select>
-            </div>
 
-            <!-- Formatting Options -->
+            <!-- Fern Formatting Option -->
             <div class="form-group">
                 <label>
                     <input type="checkbox" name="use_fern" id="use_fern">
@@ -115,8 +105,8 @@
                 </label>
             </div>
 
-            <!-- Output Options -->
-            <div class="form-group output-options">
+            <!-- Output Format -->
+            <div class="form-group">
                 <label for="output">Output format:</label>
                 <select name="output" id="output">
                     <option value="preview">Preview in browser</option>
@@ -131,40 +121,24 @@
     </div>
 
     <script>
-        // Show/hide depth options based on recursive checkbox
-        document.getElementById('recursive').addEventListener('change', function() {
-            document.getElementById('depthOptions').style.display = 
-                this.checked ? 'block' : 'none';
-        });
-
         document.getElementById('convertForm').onsubmit = async (e) => {
             e.preventDefault();
             const form = e.target;
             const url = new URL('/convert', window.location.href);
             
-            // Basic parameters
+            // Add all form parameters
             url.searchParams.set('url', form.url.value);
             url.searchParams.set('title', form.title.checked);
             url.searchParams.set('links', form.links.checked);
             url.searchParams.set('recursive', form.recursive.checked);
             url.searchParams.set('use_fern', form.use_fern.checked);
-            url.searchParams.set('output', form.output.value);
-            
-            // Add depth parameter if recursive
-            if (form.recursive.checked) {
-                url.searchParams.set('depth', form.depth.value);
-            }
             
             try {
                 const response = await fetch(url);
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
                 
                 // Handle different response types
                 const contentType = response.headers.get('content-type');
                 if (contentType && contentType.includes('application/zip')) {
-                    // Handle ZIP download
                     const blob = await response.blob();
                     const downloadUrl = window.URL.createObjectURL(blob);
                     const a = document.createElement('a');
@@ -176,12 +150,11 @@
                     document.body.removeChild(a);
                     document.getElementById('result').textContent = 'Download complete!';
                 } else {
-                    // Handle text preview or single file download
                     const result = await response.text();
                     if (form.output.value === 'preview') {
                         document.getElementById('result').textContent = result;
                     } else {
-                        // Handle single file download
+                        // Handle file download
                         const blob = new Blob([result], { type: 'text/markdown' });
                         const downloadUrl = window.URL.createObjectURL(blob);
                         const a = document.createElement('a');
