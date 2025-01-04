@@ -1,0 +1,44 @@
+---
+title: Your Transactions - AccelBooks-Docs
+source: https://docs.accelbooks.ai/data/direct-transactions
+---
+
+# Your Transactions - AccelBooks-Docs
+
+AccelBooks offers a Transaction API that allows for direct manipulation of transaction data within your application. This setup provides an alternative to third-party integrations like Plaid, offering greater control over how transactions are processed and managed.
+
+## Getting Started
+
+Ensure you have the required API credentials, which include `client_id` and `client_secret`, necessary for authenticating requests to the API.
+
+## Transaction API Endpoints
+
+Utilize the following endpoints to manage transactions for a specific company:
+
+  * `POST /company/:id/transactions` – Add new transactions for a specified company.
+  * `GET /company/:id/transactions` – Retrieve all transactions for a specified company.
+  * `GET /company/:id/transactions/{transactionId}` – Retrieve details of a specific transaction for a specified company.
+  * `PUT /company/:id/transactions/{transactionId}` – Update an existing transaction for a specified company.
+  * `DELETE /company/:id/transactions/{transactionId}` – Remove a specific transaction for a specified company.
+
+
+
+### Adding a Transaction
+
+To add a transaction to a specific company, send a POST request with the transaction details:
+
+#### Request
+
+Replace `:id` with the actual company ID to which the transaction belongs.
+
+#### Successful Response
+
+#### Error Response
+
+## Best Practices
+
+  * **Validation** : Validate data on the client side before submitting it to ensure it meets API requirements and enhances user experience.
+  * **Error Handling** : Implement robust error handling to manage API request failures gracefully.
+  * **Security** : Secure all communications with the API using HTTPS to protect sensitive financial data.
+
+

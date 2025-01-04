@@ -1,0 +1,113 @@
+---
+title: Core Concepts - AccelBooks-Docs
+source: https://docs.accelbooks.ai/core-concepts
+---
+
+# Core Concepts - AccelBooks-Docs
+
+The AccelBooks API provides a set of tools and resources for integrating financial and accounting features into your business management systems. Understanding these core concepts will help you utilize the API effectively and build powerful applications around it.
+
+### **Developers**
+
+Developers are the primary users who manage companies and their financial data via the AccelBooks platform. Each developer has a unique profile containing information such as:
+
+  * **Name** : The developer’s name.
+  * **Developer ID** : A unique identifier for the developer.
+  * **Preferences** : Developers can configure their financial preferences like currency, timezone, and locale.
+
+
+
+* * *
+
+### **Companies**
+
+A company represents the business entity being managed within AccelBooks. Each company has its own profile containing financial details, legal information, and administrators. Key attributes include:
+
+  * **Legal Name** : The official name of the business.
+  * **TIN (Tax Identification Number)** : Required for tax reporting.
+  * **Entity Type** : Defines the legal structure of the business (e.g., LLC, Corporation).
+  * **Admin User** : The primary person managing the company’s account.
+
+
+
+**Relevant API Endpoints:**
+
+  * `GET /companies/{companyId}` – Retrieve company details.
+  * `POST /companies` – Create a new company.
+
+
+
+* * *
+
+### **Transactions**
+
+Transactions represent financial activities, such as payments, deposits, or expenses, that occur within a company. Each transaction can be categorized and recorded for accounting purposes. Key fields include:
+
+  * **Amount** : The monetary value of the transaction.
+  * **Transaction Type** : Categorized as expense, income, transfer, etc.
+  * **Date** : The date of the transaction.
+  * **Account** : The source or destination account for the transaction.
+
+
+
+**Relevant API Endpoints:**
+
+  * `POST /companies/{companyId}/transactions` – Record a new transaction.
+  * `GET /companies/{companyId}/transactions` – Retrieve a list of transactions for a company.
+
+
+
+* * *
+
+### **Accounts**
+
+Accounts represent the various financial accounts within a company, such as bank accounts, credit cards, and cash accounts. Key attributes include:
+
+  * **Account Name** : The name of the account.
+  * **Account Type** : The type of account, which can be one of the following: `CHECKING`, `SAVINGS`, `CREDIT_CARD`, `PAYMENTS`, `PAYROLL`, `LOAN`, `PREPAID_CARD`, `ACCOUNTS_RECEIVABLE`, `ACCOUNTS_PAYABLE`.
+  * **Balance** : The current balance of the account.
+  * **Currency** : The currency in which the account is denominated.
+
+
+
+**Relevant API Endpoints:**
+
+  * `GET /companies/{companyId}/accounts` – Retrieve a list of accounts for a company.
+  * `POST /companies/{companyId}/accounts` – Create a new account.
+  * `GET /companies/{companyId}/accounts/{accountId}` – Retrieve details of a specific account.
+
+
+
+* * *
+
+### **Authentication**
+
+The AccelBooks API requires authentication via API keys or tokens to ensure secure access to data. Each request must include either:
+
+  * **Enterprise ID and Secret** : Used for authenticating API requests at the company level.
+  * **Access Token** : Token-based authentication for individual sessions.
+
+
+
+**Relevant API Endpoints:**
+
+  * `POST /auth` – Generate an access token for authentication.
+
+
+
+* * *
+
+### **Error Handling**
+
+The API returns structured error messages when something goes wrong. Typical error codes include:
+
+  * **400 Bad Request** : The request was malformed or invalid.
+  * **401 Unauthorized** : Authentication failed, typically due to missing or invalid credentials.
+  * **404 Not Found** : The requested resource doesn’t exist.
+  * **500 Internal Server Error** : An error occurred on the server.
+
+
+
+Understanding these error messages will help you debug issues quickly.
+
+* * *

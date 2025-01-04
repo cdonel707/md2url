@@ -1,0 +1,68 @@
+---
+title: Authentication & API Details - AccelBooks-Docs
+source: https://docs.accelbooks.ai/authentication
+---
+
+# Authentication & API Details - AccelBooks-Docs
+
+AccelBooks ensures that all API interactions are secure and authenticated using Auth0, with fine-grained permissions and UUIDs for enhanced security. This guide details how to authenticate API requests and outlines our security measures.
+
+## Overview
+
+Authentication is mandatory for all API requests to guarantee that only authorized users can access sensitive financial data. We utilize Auth0, a leading identity provider, to manage user authentication securely.
+
+### Key Features:
+
+  * **Auth0 Integration** : Secure and scalable user authentication.
+  * **Fine-Grained Permissions** : Detailed access control for data security.
+  * **UUIDs** : Unique identifiers for all entities to enhance traceability and security.
+
+
+
+## Obtaining API Credentials
+
+To interact with the AccelBooks API, you must have valid credentials, which include a `client_id` and `client_secret`. These are provided directly by our team to ensure proper setup and integration.
+
+### Steps to Obtain Credentials:
+
+  1. **Contact AccelBooks** : Reach out to our support or sales team to request API access.
+  2. **Provide Application Details** : Submit your application details, including your business needs and intended use of the API.
+  3. **Receive Credentials** : Upon approval, we will provide you with a `client_id` and `client_secret` specific to your application.
+
+
+
+## Authenticating Requests
+
+Once you receive your credentials, use them to request an access token. This token must be included in the header of each API request.
+
+### Requesting an Access Token
+
+### Response:
+
+Include the `access_token` in the Authorization header as a Bearer token for all subsequent API requests.
+
+## Using UUIDs
+
+Each entity within the AccelBooks system (e.g., transactions, companies, developers) is identified by a UUID (Universally Unique Identifier). UUIDs ensure that each entity is globally unique and secure.
+
+## Fine-Grained Permissions
+
+Fine-grained permissions allow you to specify exactly what data each authenticated user can access. When setting up your Auth0 roles, you can define permissions that match your organization’s security policies.
+
+### Example of Role-Based Access Control:
+
+  * **Admin** : Full access to all API endpoints.
+  * **Developer** : Access limited to developer-related endpoints.
+  * **Auditor** : Read-only access to financial reports and transactions.
+
+
+
+## Secure Best Practices
+
+  * **Securely store credentials** : Never hard-code credentials in your applications. Use environment variables or secure vaults.
+  * **Rotate secrets regularly** : Change your client secrets periodically to maintain security.
+  * **Monitor and log access** : Track API usage and access patterns to detect any anomalies.
+
+
+
+For further assistance with setting up authentication or any other inquiries, please contact our support team.

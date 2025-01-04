@@ -2,6 +2,7 @@ setup.py
 app/__init__.py
 app/cli.py
 app/main.py
+app/readers.py
 app/processors/__init__.py
 app/processors/filters.py
 app/processors/formatters.py
