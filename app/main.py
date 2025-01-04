@@ -77,19 +77,20 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Configure templates
+# Configure templates path
 templates_path = os.path.join(os.path.dirname(__file__), "templates")
-logger.info(f"Templates directory: {templates_path}")
 templates = Jinja2Templates(directory=templates_path)
 
-@app.get("/health")
-async def health_check():
-    logger.info("Health check endpoint called")
+# Add a simple root endpoint that returns text
+@app.get("/")
+async def root():
+    logger.info("Root endpoint called")
     return {"status": "healthy"}
 
-@app.get("/", response_class=HTMLResponse)
-async def read_root(request: Request):
-    logger.info("Root endpoint called")
+# Add the HTML endpoint separately
+@app.get("/convert-ui", response_class=HTMLResponse)
+async def convert_ui(request: Request):
+    logger.info("Convert UI endpoint called")
     try:
         response = templates.TemplateResponse(
             "index.html",
@@ -215,10 +216,6 @@ def create_zip_response(temp_dir: str) -> Response:
         media_type='application/zip',
         headers={'Content-Disposition': 'attachment; filename=markdown-export.zip'}
     )
-
-@app.get("/")
-async def root():
-    return {"status": "healthy"}
 
 @app.on_event("shutdown")
 async def shutdown_event():
