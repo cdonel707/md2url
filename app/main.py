@@ -41,9 +41,6 @@ app = FastAPI(
     redoc_url="/redoc"  # Re-enable redoc
 )
 
-# Mount static files
-app.mount("/static", StaticFiles(directory=os.path.join(os.path.dirname(__file__), "static")), name="static")
-
 # Get templates
 templates = Jinja2Templates(directory=os.path.join(os.path.dirname(__file__), "templates"))
 
@@ -55,7 +52,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Add root route to serve the web interface
+# Update the index.html template to not rely on static files
 @app.get("/", response_class=HTMLResponse)
 async def root(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
