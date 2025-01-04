@@ -81,16 +81,10 @@ app.add_middleware(
 templates_path = os.path.join(os.path.dirname(__file__), "templates")
 templates = Jinja2Templates(directory=templates_path)
 
-# Add a simple root endpoint that returns text
-@app.get("/")
-async def root():
-    logger.info("Root endpoint called")
-    return {"status": "healthy"}
-
-# Add the HTML endpoint separately
-@app.get("/convert-ui", response_class=HTMLResponse)
-async def convert_ui(request: Request):
-    logger.info("Convert UI endpoint called")
+# Serve the index page at root
+@app.get("/", response_class=HTMLResponse)
+async def read_root(request: Request):
+    logger.info("Root endpoint called - serving index.html")
     try:
         response = templates.TemplateResponse(
             "index.html",
@@ -102,6 +96,12 @@ async def convert_ui(request: Request):
         logger.error(f"Error rendering template: {str(e)}")
         logger.error(traceback.format_exc())
         raise
+
+# Add a separate health check endpoint
+@app.get("/health")
+async def health_check():
+    logger.info("Health check endpoint called")
+    return {"status": "healthy"}
 
 @app.on_event("startup")
 async def startup_event():
