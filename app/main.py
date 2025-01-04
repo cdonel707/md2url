@@ -28,6 +28,8 @@ from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
 from app.processors.formatters.fern import convert_to_fern_style
 import logging
+from starlette.middleware.base import BaseHTTPMiddleware
+import traceback
 
 # Load environment variables
 load_dotenv()
@@ -38,10 +40,12 @@ LOG_LEVEL = os.getenv('LOG_LEVEL', 'info')
 RELOAD = os.getenv('RELOAD', 'false').lower() == 'true'
 PORT = int(os.getenv('PORT', '8000'))
 
-# Cache template loading
-@lru_cache()
-def get_templates():
-    return Jinja2Templates(directory=os.path.join(os.path.dirname(__file__), "templates"))
+# Configure logging
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 # Create the FastAPI app
 app = FastAPI(
@@ -50,24 +54,60 @@ app = FastAPI(
     redoc_url="/redoc"
 )
 
-# Configure templates
-templates = Jinja2Templates(directory=os.path.join(os.path.dirname(__file__), "templates"))
+# Error handling middleware
+class ErrorLoggingMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        try:
+            response = await call_next(request)
+            return response
+        except Exception as e:
+            logger.error(f"Request failed: {str(e)}")
+            logger.error(traceback.format_exc())
+            return Response(
+                content=str(e),
+                status_code=500
+            )
 
-# Add CORS middleware
+# Add middleware
+app.add_middleware(ErrorLoggingMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_methods=["GET", "POST"],
+    allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Serve the index page
+# Configure templates
+templates_path = os.path.join(os.path.dirname(__file__), "templates")
+logger.info(f"Templates directory: {templates_path}")
+templates = Jinja2Templates(directory=templates_path)
+
+@app.get("/health")
+async def health_check():
+    logger.info("Health check endpoint called")
+    return {"status": "healthy"}
+
 @app.get("/", response_class=HTMLResponse)
 async def read_root(request: Request):
-    return templates.TemplateResponse(
-        "index.html",
-        {"request": request}
-    )
+    logger.info("Root endpoint called")
+    try:
+        response = templates.TemplateResponse(
+            "index.html",
+            {"request": request}
+        )
+        logger.info("Template rendered successfully")
+        return response
+    except Exception as e:
+        logger.error(f"Error rendering template: {str(e)}")
+        logger.error(traceback.format_exc())
+        raise
+
+@app.on_event("startup")
+async def startup_event():
+    logger.info("Application starting up...")
+    logger.info(f"Current working directory: {os.getcwd()}")
+    logger.info(f"Directory contents: {os.listdir('.')}")
+    logger.info(f"App directory contents: {os.listdir('./app')}")
 
 @app.get("/convert")
 async def convert_url(
@@ -179,13 +219,6 @@ def create_zip_response(temp_dir: str) -> Response:
 @app.get("/")
 async def root():
     return {"status": "healthy"}
-
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
-@app.on_event("startup")
-async def startup_event():
-    logger.info("Application starting up...")
 
 @app.on_event("shutdown")
 async def shutdown_event():
