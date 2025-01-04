@@ -112,104 +112,115 @@ async def startup_event():
 
 @app.get("/convert")
 async def convert_url(
-    request: Request,
-    url: str = None,
+    url: str,
     title: bool = False,
     links: bool = True,
     recursive: bool = False,
-    depth: str = "1",
-    output: str = "preview",
-    use_fern: bool = False
+    use_fern: bool = False,
+    output: str = "preview"
 ):
-    if not url:
-        raise HTTPException(status_code=400, detail="Please provide a URL parameter")
-
+    logger.info(f"Converting URL: {url} (recursive: {recursive})")
+    
+    if not validators.url(url):
+        raise HTTPException(status_code=400, detail="Invalid URL")
+    
     try:
-        # Process single URL first
+        if recursive:
+            # Create temporary directory for files
+            with tempfile.TemporaryDirectory() as temp_dir:
+                processed_urls = set()
+                await process_url_recursive(
+                    url=url,
+                    temp_dir=temp_dir,
+                    processed_urls=processed_urls,
+                    title=title,
+                    links=links,
+                    use_fern=use_fern
+                )
+                
+                # Create ZIP file from processed files
+                return create_zip_response(temp_dir)
+        else:
+            # Single file processing
+            reader = get_reader_for_url(url)
+            content, page_title = await reader.read_url(url, title, not links)
+            
+            if use_fern:
+                content = await convert_to_fern_style(content)
+            
+            return PlainTextResponse(content)
+            
+    except Exception as e:
+        logger.error(f"Error converting URL: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+async def process_url_recursive(url: str, temp_dir: str, processed_urls: set, 
+                              title: bool, links: bool, use_fern: bool, depth: int = 0):
+    """Process a URL and its linked pages recursively"""
+    if depth > 5 or url in processed_urls:  # Limit recursion depth
+        return
+    
+    processed_urls.add(url)
+    logger.info(f"Processing URL (depth {depth}): {url}")
+    
+    try:
+        # Process current page
         reader = get_reader_for_url(url)
         content, page_title = await reader.read_url(url, title, not links)
-
-        # Apply Fern styling if requested
+        
         if use_fern:
             content = await convert_to_fern_style(content)
-
-        # Handle recursive processing if requested
-        if recursive and depth != "1":
-            temp_dir = tempfile.mkdtemp()
-            try:
-                # Save first page
-                save_to_file(temp_dir, "index.mdx", content, page_title, url)
-                
-                # Process additional pages up to depth
-                max_depth = float('inf') if depth == "Unlimited" else int(depth)
-                await process_recursive_urls(url, temp_dir, max_depth, title, links, use_fern)
-
-                # Create zip file with all pages
-                return create_zip_response(temp_dir)
-            finally:
-                if os.path.exists(temp_dir):
-                    shutil.rmtree(temp_dir)
         
-        # Return single page content
-        return PlainTextResponse(content)
-
+        # Generate filename from URL path
+        parsed_url = urlparse(url)
+        path = parsed_url.path.strip("/")
+        
+        if not path:
+            filename = "index.md"
+        else:
+            # Replace slashes with hyphens and remove file extensions
+            filename = path.replace('/', '-').rstrip('.html').rstrip('.htm')
+            # Add .md extension if not present
+            if not filename.endswith('.md'):
+                filename += '.md'
+        
+        # Save content
+        filepath = os.path.join(temp_dir, filename)
+        os.makedirs(os.path.dirname(filepath), exist_ok=True)
+        
+        with open(filepath, 'w', encoding='utf-8') as f:
+            f.write(f"---\ntitle: {page_title or 'Untitled'}\n")
+            f.write(f"source: {url}\n")
+            f.write(f"date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n---\n\n")
+            f.write(content)
+        
+        # Process linked pages
+        if depth < 5:
+            linked_urls = await get_page_links(url)
+            for linked_url in linked_urls:
+                if linked_url not in processed_urls:
+                    await process_url_recursive(
+                        url=linked_url,
+                        temp_dir=temp_dir,
+                        processed_urls=processed_urls,
+                        title=title,
+                        links=links,
+                        use_fern=use_fern,
+                        depth=depth + 1
+                    )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Conversion failed: {str(e)}")
-
-async def process_recursive_urls(base_url: str, temp_dir: str, max_depth: int, title: bool, links: bool, use_fern: bool):
-    processed_urls = {base_url}
-    current_depth = 1
-    
-    while current_depth < max_depth:
-        new_urls = set()
-        for url in processed_urls:
-            try:
-                sub_urls = await get_page_links(url)
-                for sub_url in sub_urls:
-                    if sub_url not in processed_urls:
-                        reader = get_reader_for_url(sub_url)
-                        content, page_title = await reader.read_url(sub_url, title, not links)
-                        
-                        if use_fern:
-                            content = await convert_to_fern_style(content)
-                            
-                        filename = generate_filename(sub_url)
-                        save_to_file(temp_dir, filename, content, page_title, sub_url)
-                        new_urls.add(sub_url)
-            except Exception as e:
-                print(f"Error processing {url}: {str(e)}")
-                continue
-                
-        if not new_urls:
-            break
-            
-        processed_urls.update(new_urls)
-        current_depth += 1
-
-def generate_filename(url: str) -> str:
-    parsed_url = urlparse(url)
-    path = parsed_url.path.strip("/")
-    filename = "index.mdx" if not path else f"{path.replace('/', '-')}.mdx"
-    return filename[:95] + ".mdx" if len(filename) > 100 else filename
-
-def save_to_file(temp_dir: str, filename: str, content: str, title: str, url: str):
-    with open(os.path.join(temp_dir, filename), 'w', encoding='utf-8') as f:
-        f.write(f"---\ntitle: {title or 'Untitled'}\n")
-        f.write(f"source: {url}\n")
-        f.write(f"date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n---\n\n")
-        f.write(content)
+        logger.error(f"Error processing {url}: {str(e)}")
 
 def create_zip_response(temp_dir: str) -> Response:
+    """Create a ZIP file from the temporary directory"""
     zip_buffer = io.BytesIO()
     with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zipf:
         for root, _, files in os.walk(temp_dir):
             for file in files:
                 file_path = os.path.join(root, file)
-                zip_path = os.path.join('markdown-export', file)
-                with open(file_path, 'r', encoding='utf-8') as f:
-                    zipf.writestr(zip_path, f.read())
+                arc_path = os.path.relpath(file_path, temp_dir)
+                zipf.write(file_path, arc_path)
     
-    shutil.rmtree(temp_dir)
     zip_buffer.seek(0)
     return Response(
         content=zip_buffer.getvalue(),
