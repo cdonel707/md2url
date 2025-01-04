@@ -1,177 +1,242 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>URL to Markdown Converter</title>
     <style>
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            line-height: 1.6;
-            padding: 20px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             max-width: 800px;
-            margin: 0 auto;
+            margin: 2rem auto;
+            padding: 0 1rem;
         }
         .container {
-            padding: 20px;
+            background: white;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
         .form-group {
             margin-bottom: 1rem;
         }
-        label {
-            display: block;
-            margin-bottom: 0.5rem;
-        }
         input[type="text"] {
             width: 100%;
-            padding: 8px;
-            margin: 4px 0;
+            padding: 0.5rem;
+            font-size: 1rem;
             border: 1px solid #ddd;
             border-radius: 4px;
+            background: #f8f9fa;
+        }
+        .checkbox-group {
+            margin: 1rem 0;
         }
         button {
             background: #007bff;
             color: white;
             border: none;
-            padding: 10px 20px;
+            padding: 0.5rem 1rem;
             border-radius: 4px;
             cursor: pointer;
+            font-size: 1rem;
         }
-        button:hover {
-            background: #0056b3;
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
         }
-        #result {
+        .loading {
+            display: none;
+            align-items: center;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+        .loading.visible {
+            display: flex;
+        }
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #007bff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        .preview {
             margin-top: 1rem;
             padding: 1rem;
             background: #f8f9fa;
             border-radius: 4px;
-            white-space: pre-wrap;
-            font-family: monospace;
+            display: none;
         }
-        .output-options {
+        .preview.visible {
+            display: block;
+        }
+        .error {
+            color: #dc3545;
             margin-top: 1rem;
-            padding: 1rem;
-            background: #f8f9fa;
-            border-radius: 4px;
+            display: none;
         }
-        select {
-            width: 100%;
-            padding: 8px;
-            margin: 4px 0;
-            border: 1px solid #ddd;
-            border-radius: 4px;
+        .error.visible {
+            display: block;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>URL to Markdown Converter</h1>
-        <form id="convertForm">
-            <div class="form-group">
-                <label for="url">URL:</label>
-                <input type="text" id="url" name="url" required>
-            </div>
+        
+        <div class="form-group">
+            <label for="url">URL:</label>
+            <input type="text" id="url" name="url" placeholder="https://docs.example.com/" required>
+        </div>
 
-            <!-- Title Option -->
-            <div class="form-group">
-                <label>
-                    <input type="checkbox" name="title" id="title" checked>
-                    Include title as heading
-                </label>
+        <div class="checkbox-group">
+            <div>
+                <input type="checkbox" id="title" name="title" checked>
+                <label for="title">Include title as heading</label>
             </div>
-
-            <!-- Links Option -->
-            <div class="form-group">
-                <label>
-                    <input type="checkbox" name="links" id="links" checked>
-                    Preserve links
-                </label>
+            <div>
+                <input type="checkbox" id="links" name="links" checked>
+                <label for="links">Preserve links</label>
             </div>
-
-            <!-- Recursive Option -->
-            <div class="form-group">
-                <label>
-                    <input type="checkbox" name="recursive" id="recursive">
-                    Process links recursively
-                </label>
+            <div>
+                <input type="checkbox" id="recursive" name="recursive">
+                <label for="recursive">Process links recursively</label>
             </div>
-
-            <!-- Fern Formatting Option -->
-            <div class="form-group">
-                <label>
-                    <input type="checkbox" name="use_fern" id="use_fern">
-                    Use Fern style formatting
-                </label>
+            <div>
+                <input type="checkbox" id="fern" name="fern" checked>
+                <label for="fern">Use Fern style formatting</label>
             </div>
+        </div>
 
-            <!-- Output Format -->
-            <div class="form-group">
-                <label for="output">Output format:</label>
-                <select name="output" id="output">
-                    <option value="preview">Preview in browser</option>
-                    <option value="download">Download as file</option>
-                    <option value="zip">Download as ZIP (for recursive)</option>
-                </select>
-            </div>
+        <div class="form-group">
+            <label for="output">Output format:</label>
+            <select id="output" name="output">
+                <option value="preview">Preview in browser</option>
+                <option value="download">Download as file</option>
+                <option value="zip">Download as ZIP (for recursive)</option>
+            </select>
+        </div>
 
-            <button type="submit">Convert to Markdown</button>
-        </form>
-        <pre id="result"></pre>
+        <button id="convert">Convert to Markdown</button>
+
+        <div class="loading">
+            <div class="spinner"></div>
+            <span class="status">Converting...</span>
+        </div>
+
+        <div class="error"></div>
+        <pre class="preview"></pre>
     </div>
 
     <script>
-        document.getElementById('convertForm').onsubmit = async (e) => {
-            e.preventDefault();
-            const form = e.target;
-            const url = new URL('/convert', window.location.href);
-            
-            // Add form parameters
-            url.searchParams.set('url', form.url.value);
-            url.searchParams.set('title', form.title.checked);
-            url.searchParams.set('links', form.links.checked);
-            url.searchParams.set('recursive', form.recursive.checked);
-            url.searchParams.set('use_fern', form.use_fern.checked);
-            url.searchParams.set('output', form.output.value);
-            
+        const form = {
+            url: document.getElementById('url'),
+            title: document.getElementById('title'),
+            links: document.getElementById('links'),
+            recursive: document.getElementById('recursive'),
+            fern: document.getElementById('fern'),
+            output: document.getElementById('output'),
+            convert: document.getElementById('convert'),
+            loading: document.querySelector('.loading'),
+            status: document.querySelector('.status'),
+            error: document.querySelector('.error'),
+            preview: document.querySelector('.preview')
+        };
+
+        // Update output options based on recursive selection
+        form.recursive.addEventListener('change', () => {
+            if (form.recursive.checked) {
+                form.output.value = 'zip';
+                form.output.disabled = true;
+            } else {
+                form.output.disabled = false;
+            }
+        });
+
+        // Validate URL as user types
+        form.url.addEventListener('input', () => {
+            const isValid = /^https?:\/\/.+/.test(form.url.value);
+            form.convert.disabled = !isValid;
+            if (!isValid && form.url.value) {
+                form.error.textContent = 'Please enter a valid URL starting with http:// or https://';
+                form.error.classList.add('visible');
+            } else {
+                form.error.classList.remove('visible');
+            }
+        });
+
+        form.convert.addEventListener('click', async () => {
             try {
-                const response = await fetch(url);
-                const contentType = response.headers.get('content-type');
+                // Show loading state
+                form.loading.classList.add('visible');
+                form.convert.disabled = true;
+                form.preview.classList.remove('visible');
+                form.error.classList.remove('visible');
+
+                // Build URL with parameters
+                const params = new URLSearchParams({
+                    url: form.url.value,
+                    title: form.title.checked,
+                    links: form.links.checked,
+                    recursive: form.recursive.checked,
+                    use_fern: form.fern.checked,
+                    output: form.output.value
+                });
+
+                // Make request
+                const response = await fetch(`/convert?${params}`);
                 
-                if (contentType && contentType.includes('application/zip')) {
+                if (!response.ok) {
+                    throw new Error(`Error: ${response.statusText}`);
+                }
+
+                if (form.recursive.checked || form.output.value === 'zip') {
                     // Handle ZIP download
                     const blob = await response.blob();
-                    const downloadUrl = window.URL.createObjectURL(blob);
+                    const url = window.URL.createObjectURL(blob);
                     const a = document.createElement('a');
-                    a.href = downloadUrl;
+                    a.href = url;
                     a.download = 'markdown-export.zip';
                     document.body.appendChild(a);
                     a.click();
-                    window.URL.revokeObjectURL(downloadUrl);
+                    window.URL.revokeObjectURL(url);
                     document.body.removeChild(a);
-                    document.getElementById('result').textContent = 'Download complete!';
+                    form.status.textContent = 'Download complete!';
+                } else if (form.output.value === 'download') {
+                    // Handle single file download
+                    const text = await response.text();
+                    const blob = new Blob([text], { type: 'text/markdown' });
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'converted.md';
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+                    form.status.textContent = 'Download complete!';
                 } else {
-                    // Handle markdown text
-                    const result = await response.text();
-                    if (form.output.value === 'preview') {
-                        document.getElementById('result').textContent = result;
-                    } else {
-                        // Handle single file download
-                        const blob = new Blob([result], { type: 'text/markdown' });
-                        const downloadUrl = window.URL.createObjectURL(blob);
-                        const a = document.createElement('a');
-                        a.href = downloadUrl;
-                        a.download = 'converted.md';
-                        document.body.appendChild(a);
-                        a.click();
-                        window.URL.revokeObjectURL(downloadUrl);
-                        document.body.removeChild(a);
-                        document.getElementById('result').textContent = 'Download complete!';
-                    }
+                    // Show preview
+                    const text = await response.text();
+                    form.preview.textContent = text;
+                    form.preview.classList.add('visible');
+                    form.status.textContent = 'Conversion complete!';
                 }
             } catch (error) {
-                document.getElementById('result').textContent = `Error: ${error.message}`;
+                form.error.textContent = error.message;
+                form.error.classList.add('visible');
+            } finally {
+                // Reset loading state after 2 seconds
+                setTimeout(() => {
+                    form.loading.classList.remove('visible');
+                    form.convert.disabled = false;
+                    form.status.textContent = 'Converting...';
+                }, 2000);
             }
-        };
+        });
     </script>
 </body>
 </html> 
