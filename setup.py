@@ -46,7 +46,7 @@ print(markdown)
 
 setup(
     name="urltomarkdown",
-    version="1.0.0",
+    version="0.2.0",
     author="Your Name",
     author_email="your.email@example.com",
     description="A tool to convert web pages to clean markdown format",
@@ -70,6 +70,7 @@ setup(
         "html2text==2020.1.16",
         "readability-lxml==0.8.1",
         "validators==0.22.0",
+        "pyyaml==6.0.1",
         "slowapi==0.1.9",
         "starlette==0.36.3",
         "lxml==5.1.0",
