@@ -1,15 +1,75 @@
 Metadata-Version: 2.1
 Name: urltomarkdown
 Version: 1.0.0
+Summary: A tool to convert web pages to clean markdown format
+Home-page: https://github.com/yourusername/urltomarkdown
+Author: Your Name
+Author-email: your.email@example.com
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
 Requires-Dist: fastapi==0.110.0
 Requires-Dist: uvicorn==0.27.1
-Requires-Dist: markdown2==2.4.12
-Requires-Dist: readability-lxml==0.8.1
-Requires-Dist: beautifulsoup4==4.12.3
-Requires-Dist: requests==2.31.0
-Requires-Dist: html2text==2020.1.16
-Requires-Dist: slowapi==0.1.9
-Requires-Dist: validators==0.22.0
 Requires-Dist: python-multipart==0.0.9
+Requires-Dist: jinja2==3.1.2
 Requires-Dist: aiohttp==3.9.3
-Requires-Dist: lxml[html_clean]>=5.1.0
+Requires-Dist: beautifulsoup4==4.12.3
+Requires-Dist: html2text==2020.1.16
+Requires-Dist: readability-lxml==0.8.1
+Requires-Dist: validators==0.22.0
+Requires-Dist: slowapi==0.1.9
+Requires-Dist: starlette==0.36.3
+Requires-Dist: lxml==5.1.0
+Requires-Dist: soupsieve==2.5
+Requires-Dist: typing-extensions>=4.12.2
+Requires-Dist: sse-starlette==1.6.5
+Requires-Dist: websockets==12.0
+Requires-Dist: httpx>=0.25.2
+Requires-Dist: asgiref>=3.7.2
+Requires-Dist: gunicorn==21.2.0
+Requires-Dist: uvicorn[standard]==0.27.1
+Requires-Dist: python-dotenv==1.0.0
+
+
+# URL to Markdown Converter
+
+A FastAPI application that converts web pages to clean, readable markdown format.
+
+## Installation
+
+```bash
+pip install urltomarkdown
+```
+
+## Usage
+
+### Command Line
+```bash
+url2md
+```
+
+Or use the interactive mode:
+```bash
+url2md --interactive
+```
+
+### API
+```python
+from urltomarkdown import convert_url
+
+markdown = await convert_url("https://example.com")
+print(markdown)
+```
+
+## Features
+
+- Convert any web page to markdown
+- Clean and readable output
+- Support for code blocks with syntax highlighting
+- Table formatting
+- Link handling options
+- Rate limiting
+- Caching
+- API documentation

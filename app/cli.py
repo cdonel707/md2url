@@ -6,6 +6,10 @@ from bs4 import BeautifulSoup
 import aiohttp
 import validators
 from app.processors.readers import get_reader_for_url
+import yaml
+from collections import defaultdict
+from pathlib import Path
+import tempfile
 
 async def get_page_links(url: str, base_domain: str) -> set:
     """Get all links from a page that match the base domain"""
@@ -31,7 +35,7 @@ async def get_page_links(url: str, base_domain: str) -> set:
         return set()
 
 async def convert_url(url: str, title: bool = False, links: bool = True, output: str = None,
-                     recursive: bool = False, max_depth: float = 1) -> None:
+                     recursive: bool = False, max_depth: float = 1, generate_nav: bool = False) -> None:
     """Convert URL to markdown and save or print to stdout"""
     # Keep track of processed URLs to avoid loops
     if not hasattr(convert_url, 'processed_urls'):
@@ -95,6 +99,20 @@ async def convert_url(url: str, title: bool = False, links: bool = True, output:
                         max_depth=max_depth - 1 if max_depth != float('inf') else float('inf')
                     )
                 
+        # Generate navigation if requested
+        if generate_nav:
+            parsed_url = urlparse(url)
+            domain = parsed_url.netloc
+            nav_structure = generate_fern_navigation('markdown', domain)
+            
+            # Write docs.yml
+            nav_path = Path('markdown') / domain / 'docs.yml'
+            nav_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(nav_path, 'w') as f:
+                yaml.dump(nav_structure, f, sort_keys=False, allow_unicode=True)
+            
+            print(f"\nGenerated Fern navigation file at: {nav_path}")
+
     except Exception as e:
         print(f"Error processing {url}: {str(e)}", file=sys.stderr)
         if not recursive:  # Only exit if this is the main URL
@@ -162,6 +180,63 @@ def get_depth_input() -> int:
         except ValueError:
             print("Please enter a valid number")
 
+def generate_fern_navigation(markdown_dir: str, domain: str) -> dict:
+    """Generate Fern navigation structure from markdown files"""
+    base_path = Path(markdown_dir) / domain
+    
+    # Create basic Fern structure
+    nav_structure = {
+        "tabs": {
+            "guide": {
+                "display-name": "Guide",
+                "icon": "book"
+            },
+            "api": {
+                "display-name": "API Reference",
+                "icon": "code"
+            }
+        },
+        "navigation": []
+    }
+
+    # Create guide tab structure
+    guide_sections = defaultdict(lambda: {"section": "", "contents": []})
+    
+    # Process all mdx files
+    for file_path in base_path.glob("**/*.mdx"):
+        relative_path = file_path.relative_to(Path(markdown_dir))
+        parts = list(relative_path.parts)
+        
+        if len(parts) > 1:  # Has a section
+            section_name = parts[1].title()
+            page_name = file_path.stem.replace('-', ' ').title()
+            
+            guide_sections[section_name]["section"] = section_name
+            guide_sections[section_name]["contents"].append({
+                "page": page_name,
+                "path": str(relative_path)
+            })
+    
+    # Add guide sections to navigation
+    guide_tab = {
+        "tab": "guide",
+        "layout": list(guide_sections.values())
+    }
+    
+    # Add API tab
+    api_tab = {
+        "tab": "api",
+        "layout": [{
+            "section": "API Reference",
+            "contents": [{
+                "api": "API Reference"
+            }]
+        }]
+    }
+    
+    nav_structure["navigation"].extend([guide_tab, api_tab])
+    return nav_structure
+
 def main():
     print("Welcome to URL to Markdown Converter!")
     print("=====================================")
@@ -184,6 +259,9 @@ def main():
     # Get depth if recursive
     max_depth = get_depth_input() if recursive else 1
     
+    # Add navigation option
+    generate_nav = get_yes_no_input("Generate Fern navigation file (docs.yml)?")
+    
     print("\nStarting conversion...")
     asyncio.run(convert_url(
         url=url,
@@ -191,7 +269,8 @@ def main():
         links=links,
         output=output,
         recursive=recursive,
-        max_depth=max_depth
+        max_depth=max_depth,
+        generate_nav=generate_nav
     ))
 
 if __name__ == '__main__':

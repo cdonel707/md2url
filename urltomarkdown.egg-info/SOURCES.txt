@@ -7,6 +7,10 @@ app/processors/__init__.py
 app/processors/filters.py
 app/processors/formatters.py
 app/processors/html_processor.py
+app/processors/formatters/__init__.py
+app/processors/formatters/code_formatter.py
+app/processors/formatters/fern.py
+app/processors/formatters/table_formatter.py
 app/processors/readers/__init__.py
 app/processors/readers/apple_reader.py
 app/processors/readers/base.py
