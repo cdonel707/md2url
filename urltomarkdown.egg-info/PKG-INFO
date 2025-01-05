@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: urltomarkdown
-Version: 1.0.0
+Version: 0.2.0
 Summary: A tool to convert web pages to clean markdown format
 Home-page: https://github.com/yourusername/urltomarkdown
 Author: Your Name
@@ -19,6 +19,7 @@ Requires-Dist: beautifulsoup4==4.12.3
 Requires-Dist: html2text==2020.1.16
 Requires-Dist: readability-lxml==0.8.1
 Requires-Dist: validators==0.22.0
+Requires-Dist: pyyaml==6.0.1
 Requires-Dist: slowapi==0.1.9
 Requires-Dist: starlette==0.36.3
 Requires-Dist: lxml==5.1.0
